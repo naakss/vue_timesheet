@@ -5,7 +5,7 @@ const cors = require("cors");
 const app = express();
 
 var corsOptions = {
-  origin: "http://localhost:8081"
+  origin: "http://192.168.172.213:8080"
 };
 
 app.use(cors(corsOptions));
@@ -27,13 +27,13 @@ db.mongoose
     console.log("Connected to the database!");
   })
   .catch(err => {
-    console.log("Cannot connect to the database!", err);
+    console.log("Cannot connect to the database!", err);-
     process.exit();
   });
 
 // simple route
 app.get("/", (req, res) => {
-  res.json({ message: "Welcome to server application." });
+  res.json({ message: "Welcome to my server application." });
 });
 
 require("./app/routes/timeentry.routes")(app);
