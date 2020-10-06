@@ -7,7 +7,6 @@
       sort-by="calories"
       class="elevation-1"
     >
-
       <template v-slot:top>
         <v-toolbar flat color="white">
           <v-spacer></v-spacer>
@@ -19,17 +18,18 @@
             single-line
             hide-details
           ></v-text-field>
+
           <v-dialog v-model="dialog" max-width="500px">
             <v-card>
               <v-card-title>
-                <span class="headline">{{ formTitle }}</span>
+                <span class="headline">Edit Item</span>
               </v-card-title>
 
               <v-card-text>
                 <v-container>
                   <v-row>
                     <v-col cols="12">
-                      <v-text-field v-model="editedItem.date" label="Date"></v-text-field>
+                      <v-text-field readonly v-model="editedItem.date" label="Date"></v-text-field>
                     </v-col>
                     <v-col cols="3">
                       <v-text-field v-model="editedItem.startTime" label="Start Time"></v-text-field>
@@ -58,23 +58,46 @@
 
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="blue darken-1" text @click="close">Cancel</v-btn>
-                <v-btn color="blue darken-1" text @click="save">Save</v-btn>
+                <v-btn class="mr-2" depressed color="primary" @click="close">Cancel</v-btn>
+                <v-btn depressed color="primary" @click="save">Save</v-btn>
               </v-card-actions>
+
             </v-card>
           </v-dialog>
+
+          <v-dialog v-model="clearDialog" max-width="500px">
+            <v-card>
+              <v-card-title>
+                <span class="headline">Clear Item</span>
+              </v-card-title>
+
+              <v-card-text>
+                Are you sure to clear the selected item?
+              </v-card-text>
+
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn class="mr-2" depressed color="primary" @click="closeClearDialog">No</v-btn>
+                <v-btn depressed color="primary" @click="clearSelectedItem">Yes</v-btn>
+              </v-card-actions>
+
+            </v-card>
+          </v-dialog>
+
         </v-toolbar>
       </template>
+
       <template v-slot:item.actions="{ item }">
         <v-btn class="mr-2" depressed color="primary" @click="editItem(item)">Edit</v-btn>
-        <v-btn depressed color="error" @click="deleteItem(item)">Delete</v-btn>
+        <v-btn depressed color="error" @click="setClearedItem(item)">Clear</v-btn>
       </template>
+
     </v-data-table>
   </v-app>
 </template>
 
 <script>
-import axios from 'axios';
+import axios from "axios";
 
 export default {
   name: "TimesheetTable",
@@ -83,6 +106,7 @@ export default {
     entries: [],
     search: "",
     dialog: false,
+    clearDialog: false,
     headers: [
       { text: "Date", value: "date" },
       { text: "Start Time", value: "startTime", sortable: false },
@@ -92,56 +116,43 @@ export default {
       { text: "Customer", value: "customer" },
       { text: "Project", value: "project" },
       { text: "Work Details", value: "workDetails", sortable: false },
-      { text: "Actions", value: "actions", sortable: false, align:"center" },
+      { text: "Actions", value: "actions", sortable: false, align: "center" },
     ],
-    desserts: [],
-    editedIndex: -1,
     editedItem: {
-      date: "01 September 2020",
-      startTime: "9:00",
-      break: "1:00",
-      endTime: "18:00",
-      total: "8:00",
+      date: "",
+      startTime: "",
+      break: "",
+      endTime: "",
+      total: "",
       customer: "",
       project: "",
       workDetails: "",
-    },
-    defaultItem: {
-      date: "01 September 2020",
-      startTime: "8:00",
-      break: "1:00",
-      endTime: "18:00",
-      total: "8:00",
-      customer: "",
-      project: "",
-      workDetails: "",
+      createdAt: "",
+      updatedAt: "",
+      id: "",
     },
     clearedItem: {
       date: "",
-      startTime: "0:00",
-      break: "0:00",
-      endTime: "0:00",
-      total: "0:00",
+      startTime: "",
+      break: "",
+      endTime: "",
+      total: "",
       customer: "",
       project: "",
       workDetails: "",
+      createdAt: "",
+      updatedAt: "",
+      id: "",
     },
   }),
 
-  mounted () {
+  mounted() {
     axios
-      .get('http://localhost:8085/api/timeentries')
-      .then(response =>  {
-        this.entries = response.data
-      }
-        )
-      .catch(error => console.log(error))
-  },
-
-  computed: {
-    formTitle() {
-      return this.editedIndex === -1 ? "New Item" : "Edit Item";
-    },
+      .get("http://localhost:8085/api/timeentries")
+      .then((response) => {
+        this.entries = response.data;
+      })
+      .catch((error) => console.log(error));
   },
 
   watch: {
@@ -151,31 +162,53 @@ export default {
   },
 
   methods: {
-
     editItem(item) {
-      this.editedIndex = this.entries.indexOf(item);
       this.editedItem = Object.assign({}, item);
       this.dialog = true;
     },
 
-    deleteItem(item) {
-      Object.assign(this.entries[this.entries.indexOf(item)], this.clearedItem);
+    setClearedItem(item) {
+      this.clearedItem.date = item.date;
+      this.clearedItem.id = item.id;
+      this.clearedItem.createdAt = item.createdAt;
+      this.clearedItem.updatedAt = item.updatedAt;
+      this.clearDialog = true;
+    },
+
+    updateEntries() {
+      axios
+            .get("http://localhost:8085/api/timeentries")
+            .then((response) => {
+              this.entries = response.data;
+            })
+            .catch((error) => console.log(error));
+    },
+
+    clearSelectedItem() {
+      axios
+        .put("http://localhost:8085/api/timeentries/" + this.clearedItem.id, this.clearedItem)
+        .then(() => {
+          this.updateEntries();
+        })
+        .catch((error) => console.log(error));
+      this.clearDialog = false;
     },
 
     close() {
       this.dialog = false;
-      this.$nextTick(() => {
-        this.editedItem = Object.assign({}, this.defaultItem);
-        this.editedIndex = -1;
-      });
+    },
+
+    closeClearDialog() {
+      this.clearDialog = false;
     },
 
     save() {
-      if (this.editedIndex > -1) {
-        Object.assign(this.entries[this.editedIndex], this.editedItem);
-      } else {
-        this.entries.push(this.editedItem);
-      }
+      axios
+        .put("http://localhost:8085/api/timeentries/" + this.editedItem.id, this.editedItem)
+        .then(() => {
+          this.updateEntries();
+        })
+        .catch((error) => console.log(error));
       this.close();
     },
   },
