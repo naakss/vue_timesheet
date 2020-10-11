@@ -272,24 +272,6 @@ export default {
         },
         margin: { top: 30 },
       });
-      // doc.autoTable(this.headerArray, this.getPdfEntries(), {
-      //   headerStyles: {
-      //     fontSize: 10
-      //   },
-      //   margin: { top: 30 },
-      //   beforePageContent: function () {
-      //     doc.setFontSize(10);
-      //     doc.text("e-GITS GmbH", 14, 10);
-      //     doc.text("Meitnerstr. 9", 14, 16);
-      //     doc.text("D-70563 Stuttgart", 14, 22);
-      //     doc.text("Tel:   +49 (0) 711/9937 9090", 60, 10);
-      //     doc.text("Fax:   +49 (0) 711/9937 9094", 60, 16);
-      //     doc.text("Email: info@e-gits.com", 60, 22);
-      //     var img = new Image();
-      //     img.src = '/assets/images/eGITS-Logo.png';
-      //     doc.addImage(img, 'PNG', 80, 10, 300, 74);
-      //   },
-      // });
       doc.save("table.pdf");
     },
 
