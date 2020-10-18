@@ -1,11 +1,11 @@
 module.exports = mongoose => {
     var schema = mongoose.Schema(
         {
-          date: String,
-          startTime: String,
-          break: String,
-          endTime: String,
-          total: String,
+          date: Date,
+          startTime: Date,
+          break: Date,
+          endTime: Date,
+          total: Date,
           customer: String,
           project: String,
           workDetails: String

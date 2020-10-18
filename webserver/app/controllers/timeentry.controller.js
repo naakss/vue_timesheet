@@ -37,35 +37,89 @@ exports.create = (req, res) => {
 
 // Retrieve all Timeentries from the database.
 exports.findAll = (req, res) => {
-    const customer = req.query.customer;
-    var condition = customer ? { customer: { $regex: new RegExp(customer), $options: "i" } } : {};
-  
-    Timeentry.find(condition)
-      .then(data => {
-        res.send(data);
-      })
+  const customer = req.query.customer;
+  var condition = customer ? { customer: { $regex: new RegExp(customer), $options: "i" } } : {};
+
+  Timeentry.find(condition)
+    .then(data => {
+      res.send(data);
+    })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while retrieving all Timeentries from the database."
+      });
+    });
+};
+
+// Retrieve current week with current date
+exports.findCurrentWeek = async (req, res) => {
+  let currentDate = new Date;
+  currentDate.setHours(0);
+  currentDate.setMinutes(0);
+  currentDate.setSeconds(0);
+  currentDate.setMilliseconds(0);
+
+  let firstWeekDay = new Date(currentDate.getTime() - (86400000 * currentDate.getDay())); // 1 day = 86400000 millisecs
+  let lastWeekDay = new Date(firstWeekDay.getTime() + (86400000 * 6));
+
+  // Check if week date exists in database
+  for (let i = 0; i < 7; i++) {
+
+    let weekdate = new Date(firstWeekDay.getTime() + (86400000 * i));
+
+    await Timeentry.find({
+      date: {
+        $eq: weekdate
+      }
+    }).then(data => {
+      let timeentry = data;
+
+      // add default entry if week day doesnt exist
+      if (timeentry.length == 0) {
+        let defaultEntry = new Timeentry({
+          date: weekdate,
+          startTime: "",
+          break: "",
+          endTime: "",
+          total: "",
+          customer: "",
+          project: "",
+          workDetails: ""
+        });
+
+        defaultEntry
+          .save()
+          .catch(err => {
+            res.status(500).send({
+              message:
+                err.message || "Some error occurred while creating the Timeentry."
+            });
+          });
+      }
+    })
       .catch(err => {
         res.status(500).send({
           message:
-            err.message || "Some error occurred while retrieving tutorials."
+            err.message || "Some error occurred while checking if week day exists in database"
         });
       });
-};
+  }
 
-// Find a single Timeentry with an id
-exports.findOne = (req, res) => {
-  const id = req.params.id;
-
-  Timeentry.findById(id)
-    .then(data => {
-      if (!data)
-        res.status(404).send({ message: "Not found Timeentry with id " + id });
-      else res.send(data);
-    })
+  // return week data
+  await Timeentry.find({
+    date: {
+      $gte: firstWeekDay,
+      $lte: lastWeekDay
+    }
+  }).then(data => {
+    res.send(data);
+  })
     .catch(err => {
-      res
-        .status(500)
-        .send({ message: "Error retrieving Timeentry with id=" + id });
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while returning week data."
+      });
     });
 };
 

@@ -9,8 +9,8 @@ module.exports = app => {
     // Retrieve all Time entries
     router.get("/", timeentries.findAll);
   
-    // Retrieve a single Time entry with id
-    router.get("/:id", timeentries.findOne);
+    // Retrieve current week with current date
+    router.get("/currentWeek", timeentries.findCurrentWeek);
   
     // Update a Time entry with id
     router.put("/:id", timeentries.update);
