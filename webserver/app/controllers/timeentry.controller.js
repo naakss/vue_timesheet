@@ -36,11 +36,11 @@ exports.create = (req, res) => {
 };
 
 // Retrieve all Timeentries from the database.
-exports.findAll = (req, res) => {
+exports.findAll = async (req, res) => {
   const customer = req.query.customer;
   var condition = customer ? { customer: { $regex: new RegExp(customer), $options: "i" } } : {};
 
-  Timeentry.find(condition)
+  await Timeentry.find(condition)
     .then(data => {
       res.send(data);
     })
@@ -54,7 +54,7 @@ exports.findAll = (req, res) => {
 
 // Retrieve current week with current date
 exports.findCurrentWeek = async (req, res) => {
-  let currentDate = new Date;
+  let currentDate = new Date();
   currentDate.setHours(0);
   currentDate.setMinutes(0);
   currentDate.setSeconds(0);
@@ -111,6 +111,73 @@ exports.findCurrentWeek = async (req, res) => {
     date: {
       $gte: firstWeekDay,
       $lte: lastWeekDay
+    }
+  }).then(data => {
+    res.send(data);
+  })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while returning week data."
+      });
+    });
+};
+
+// Retrieve current month with current date
+exports.findCurrentMonth = async (req, res) => {
+  var currentDate = new Date();
+  var currentMonth = currentDate.getMonth();
+  var firstMonthDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  var lastMonthDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+  // Set the 1st date of the month
+  currentDate.setDate(1);
+
+  while (currentDate.getMonth() === currentMonth) {
+
+    // add default entry if day doesnt exist
+    await Timeentry.find({
+      date: currentDate.toDateString()
+    }).then(data => {
+      let timeentry = data;
+      if (timeentry.length == 0) {
+
+        let defaultEntry = new Timeentry({
+          date: currentDate.toDateString(),
+          startTime: "",
+          break: "",
+          endTime: "",
+          total: "",
+          customer: "",
+          project: "",
+          workDetails: ""
+        });
+
+        defaultEntry
+          .save()
+          .catch(err => {
+            res.status(500).send({
+              message:
+                err.message || "Some error occurred while creating the Timeentry."
+            });
+          });
+      }
+    })
+      .catch(err => {
+        res.status(500).send({
+          message:
+            err.message || "Some error occurred while checking if week day exists in database"
+        });
+      });
+
+      currentDate.setTime(currentDate.getTime() + 86400000);
+  }
+
+  // return month data
+  await Timeentry.find({
+    date: {
+      $gte: firstMonthDay.toDateString(),
+      $lte: lastMonthDay.toDateString()
     }
   }).then(data => {
     res.send(data);

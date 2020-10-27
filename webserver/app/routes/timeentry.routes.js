@@ -11,6 +11,9 @@ module.exports = app => {
   
     // Retrieve current week with current date
     router.get("/currentWeek", timeentries.findCurrentWeek);
+
+    // Retrieve current month with current date
+    router.get("/currentMonth", timeentries.findCurrentMonth);
   
     // Update a Time entry with id
     router.put("/:id", timeentries.update);

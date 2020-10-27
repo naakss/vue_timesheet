@@ -20,37 +20,43 @@
                 <v-text-field
                   v-model="editedItem.startTime"
                   label="Start Time"
+                  :rules="[rules.required, rules.timeformat]"
                 ></v-text-field>
               </v-col>
               <v-col cols="3">
                 <v-text-field
                   v-model="editedItem.break"
                   label="Break"
+                  :rules="[rules.required, rules.timeformat]"
                 ></v-text-field>
               </v-col>
               <v-col cols="3">
                 <v-text-field
                   v-model="editedItem.endTime"
                   label="End Time"
+                  :rules="[rules.required, rules.timeformat]"
                 ></v-text-field>
               </v-col>
               <v-col cols="3">
                 <v-text-field
+                  readonly
                   v-model="editedItem.total"
                   label="Total"
                 ></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field
+                <v-select
+                  :items="customers"
                   v-model="editedItem.customer"
                   label="Customer"
-                ></v-text-field>
+                ></v-select>
               </v-col>
               <v-col cols="6">
-                <v-text-field
+                <v-select
+                  :items="projects"
                   v-model="editedItem.project"
                   label="Project"
-                ></v-text-field>
+                ></v-select>
               </v-col>
               <v-col cols="12">
                 <v-text-field
@@ -98,30 +104,20 @@
 
     <v-data-table
       id="ta2"
-      :search="search"
       :headers="headers"
       :items="entries"
-      sort-by="calories"
-      class="elevation-1"
+      :items-per-page=31
+      :item-class="highlightCurrentDateRow"
     >
       <template v-slot:top>
         <v-toolbar flat color="white">
           <v-btn depressed color="primary" @click="createPdf">Create PDF</v-btn>
-          <v-spacer></v-spacer>
-
-          <v-text-field
-            v-model="search"
-            append-icon="mdi-magnify"
-            label="Search"
-            single-line
-            hide-details
-          ></v-text-field>
         </v-toolbar>
       </template>
 
-      <template v-slot:item.date="{ item }">{{
-        new Date(item.date).toDateString()
-      }}</template>
+      <template v-slot:item.date="{ item }">
+        {{ new Date(item.date).toDateString() }}
+      </template>
 
       <template v-slot:item.actions="{ item }">
         <v-btn class="mr-2" depressed color="primary" @click="editItem(item)"
@@ -149,9 +145,17 @@ export default {
 
   data: () => ({
     entries: [],
-    search: "",
     dialog: false,
+    customers: ["BMW", "Audi", "Daimler"],
+    projects: ["Can tool", "Infotainment", "MQTT", "Cloud"],
     clearDialog: false,
+    rules: {
+      required: (value) => !!value || "Required field.",
+      timeformat: (value) => {
+        const pattern = /^([01]\d|2[0-3]):?([0-5]\d)$/;
+        return pattern.test(value) || "Invalid time: Use HH:ss format";
+      },
+    },
     headerArray: [["Date", "Total", "Customer", "Project", "Work Details"]],
     headers: [
       { text: "Date", value: "date" },
@@ -203,6 +207,9 @@ export default {
   },
 
   methods: {
+    highlightCurrentDateRow: function (item) {
+      return ((new Date(item.date)).getDate() === (new Date()).getDate()) ? 'lightblue-color' : 'white-color';
+    },
     getPdfEntries() {
       var tableEntries = [];
       for (var i = 0; i < this.entries.length; i++) {
@@ -283,6 +290,7 @@ export default {
 
     editItem(item) {
       this.editedItem = Object.assign({}, item);
+      this.editedItem.date = new Date(item.date).toDateString();
       this.dialog = true;
     },
 
@@ -296,7 +304,7 @@ export default {
 
     updateEntries() {
       axios
-        .get("http://localhost:8085/api/timeentries/currentWeek")
+        .get("http://localhost:8085/api/timeentries/currentMonth")
         .then((response) => {
           this.entries = response.data;
         })
