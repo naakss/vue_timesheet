@@ -111,8 +111,9 @@
       id="ta2"
       :headers="headers"
       :items="entries"
-      :items-per-page="31"
+      :items-per-page="entries.length"
       :item-class="highlightCurrentDateRow"
+      hide-default-footer
     >
       <template v-slot:top>
         <v-toolbar flat color="white">
@@ -133,6 +134,19 @@
         >
       </template>
     </v-data-table>
+
+    <v-container no-gutters>
+      <v-row>
+        <v-col>
+        <v-btn class="mr-2" depressed color="primary" @click="viewPreviousMonth"
+          >Previous Month</v-btn
+        >
+        <v-btn depressed color="primary" @click="viewNextMonth"
+          >Next Month</v-btn
+        >
+        </v-col>
+        </v-row>
+      </v-container>
   </v-app>
 </template>
 
@@ -149,6 +163,8 @@ export default {
   name: "TimesheetTable",
 
   data: () => ({
+    currentMonth: new Date().getMonth(),
+    currentYear: new Date().getFullYear(),
     workTime: [
       "04:00",
       "04:15",
@@ -298,8 +314,26 @@ export default {
   },
 
   methods: {
+    viewNextMonth() {
+      if (this.currentMonth == 11) {
+        this.currentMonth = 0;
+        this.currentYear++;
+      } else {
+        this.currentMonth++;
+      }
+      this.updateEntries();
+    },
+    viewPreviousMonth() {
+      if (this.currentMonth == 0) {
+        this.currentMonth = 11;
+        this.currentYear--;
+      } else {
+        this.currentMonth--;
+      }
+      this.updateEntries();
+    },
     highlightCurrentDateRow: function (item) {
-      return new Date(item.date).getDate() === new Date().getDate()
+      return new Date(item.date).getDate() === new Date().getDate() && new Date(item.date).getMonth() === new Date().getMonth() && new Date(item.date).getFullYear() === new Date().getFullYear()
         ? "lightblue-color"
         : "white-color";
     },
@@ -435,7 +469,7 @@ export default {
 
     updateEntries() {
       axios
-        .get("http://localhost:8085/api/timeentries/currentMonth")
+        .get("http://localhost:8085/api/timeentries/monthEntries/"+ this.currentMonth + "/" + this.currentYear)
         .then((response) => {
           this.entries = response.data;
         })

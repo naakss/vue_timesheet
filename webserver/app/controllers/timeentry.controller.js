@@ -123,17 +123,21 @@ exports.findCurrentWeek = async (req, res) => {
     });
 };
 
-// Retrieve current month with current date
-exports.findCurrentMonth = async (req, res) => {
+// Retrieve month entries with current month
+exports.monthEntries = async (req, res) => {
+  const month = req.params.month;
+  const year = req.params.year;
+
   var currentDate = new Date();
-  var currentMonth = currentDate.getMonth();
+  currentDate.setMonth(month);
+  currentDate.setFullYear(year);
   var firstMonthDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   var lastMonthDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
   // Set the 1st date of the month
   currentDate.setDate(1);
 
-  while (currentDate.getMonth() === currentMonth) {
+  while (currentDate.getMonth() == month) {
 
     // add default entry if day doesnt exist
     await Timeentry.find({
