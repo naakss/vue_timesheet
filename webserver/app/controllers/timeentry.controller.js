@@ -52,65 +52,17 @@ exports.findAll = async (req, res) => {
     });
 };
 
-// Retrieve current week with current date
-exports.findCurrentWeek = async (req, res) => {
-  let currentDate = new Date();
-  currentDate.setHours(0);
-  currentDate.setMinutes(0);
-  currentDate.setSeconds(0);
-  currentDate.setMilliseconds(0);
+// Retrieve entries over a date range
+exports.rangeEntries = async (req, res) => {
+  var startDate = new Date(req.params.startDate);
+  var endDate =  new Date(req.params.endDate);
+  startDate.setTime(startDate.getTime() - 86400000);
 
-  let firstWeekDay = new Date(currentDate.getTime() - (86400000 * currentDate.getDay())); // 1 day = 86400000 millisecs
-  let lastWeekDay = new Date(firstWeekDay.getTime() + (86400000 * 6));
-
-  // Check if week date exists in database
-  for (let i = 0; i < 7; i++) {
-
-    let weekdate = new Date(firstWeekDay.getTime() + (86400000 * i));
-
-    await Timeentry.find({
-      date: {
-        $eq: weekdate
-      }
-    }).then(data => {
-      let timeentry = data;
-
-      // add default entry if week day doesnt exist
-      if (timeentry.length == 0) {
-        let defaultEntry = new Timeentry({
-          date: weekdate,
-          startTime: "",
-          break: "",
-          endTime: "",
-          total: "",
-          customer: "",
-          project: "",
-          workDetails: ""
-        });
-
-        defaultEntry
-          .save()
-          .catch(err => {
-            res.status(500).send({
-              message:
-                err.message || "Some error occurred while creating the Timeentry."
-            });
-          });
-      }
-    })
-      .catch(err => {
-        res.status(500).send({
-          message:
-            err.message || "Some error occurred while checking if week day exists in database"
-        });
-      });
-  }
-
-  // return week data
+  // return data
   await Timeentry.find({
     date: {
-      $gte: firstWeekDay,
-      $lte: lastWeekDay
+      $gte: startDate,
+      $lte: endDate
     }
   }).then(data => {
     res.send(data);
@@ -118,7 +70,84 @@ exports.findCurrentWeek = async (req, res) => {
     .catch(err => {
       res.status(500).send({
         message:
-          err.message || "Some error occurred while returning week data."
+          err.message || "Some error occurred while returning range data."
+      });
+    });
+};
+
+// Retrieve entries over a date range
+exports.rangeProjectEntries = async (req, res) => {
+  var startDate = new Date(req.params.startDate);
+  var endDate =  new Date(req.params.endDate);
+  var projectName = req.params.project;
+  startDate.setTime(startDate.getTime() - 86400000);
+
+  // return data
+  await Timeentry.find({
+    date: {
+      $gte: startDate,
+      $lte: endDate
+    },
+    project: projectName,
+  }).then(data => {
+    res.send(data);
+  })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while returning range data."
+      });
+    });
+};
+
+// Retrieve entries over a date range
+exports.rangeCustomerEntries = async (req, res) => {
+  var startDate = new Date(req.params.startDate);
+  var endDate =  new Date(req.params.endDate);
+  var customerName =req.params.customer;
+  startDate.setTime(startDate.getTime() - 86400000);
+
+  // return data
+  await Timeentry.find({
+    date: {
+      $gte: startDate,
+      $lte: endDate
+    },
+    customer: customerName,
+  }).then(data => {
+    res.send(data);
+  })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while returning range data."
+      });
+    });
+};
+
+// Retrieve entries over a date range
+exports.rangeProjectCustomerEntries = async (req, res) => {
+  var startDate = new Date(req.params.startDate);
+  var endDate =  new Date(req.params.endDate);
+  var projectName = req.params.project;
+  var customerName =req.params.customer;
+  startDate.setTime(startDate.getTime() - 86400000);
+
+  // return data
+  await Timeentry.find({
+    date: {
+      $gte: startDate,
+      $lte: endDate
+    },
+    project: projectName,
+    customer: customerName,
+  }).then(data => {
+    res.send(data);
+  })
+    .catch(err => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while returning range data."
       });
     });
 };

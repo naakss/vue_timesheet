@@ -16,7 +16,7 @@
                   label="Date"
                 ></v-text-field>
               </v-col>
-              <v-col cols="3">
+              <v-col cols="4">
                 <v-select
                   :items="workTime"
                   v-model="editedItem.startTime"
@@ -40,12 +40,11 @@
                   v-on:change="calculateTotalTime"
                 ></v-select>
               </v-col>
-              <v-col cols="3">
+              <v-col cols="2">
                 <v-text-field
                   readonly
                   v-model="editedItem.total"
                   label="Total"
-                  :rules="[rules.required, rules.timeValidity]"
                 ></v-text-field>
               </v-col>
               <v-col cols="6">
@@ -66,7 +65,6 @@
                 <v-text-field
                   v-model="editedItem.workDetails"
                   label="Work Details"
-                  :rules="[rules.required]"
                 ></v-text-field>
               </v-col>
             </v-row>
@@ -107,20 +105,93 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="filterDialog" max-width="400px">
+      <v-card>
+        <v-card-title>
+          <span class="headline">Select Filters</span>
+        </v-card-title>
+        <v-card-text>
+          <v-row>
+            <v-col cols="12">
+              <v-text-field
+                v-model="dateRangeText"
+                label="Date range"
+                prepend-icon="mdi-calendar"
+                readonly
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12">
+              <v-date-picker full-width v-model="dates" range></v-date-picker>
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                :items="customers"
+                v-model="customerFilter"
+                label="Customer"
+              ></v-select>
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                :items="projects"
+                v-model="projectFilter"
+                label="Project"
+              ></v-select>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            depressed
+            class="mr-2"
+            color="primary"
+            @click="filterDialog = false"
+            >Cancel</v-btn
+          >
+          <v-btn
+            :disabled="dates.length < 2"
+            depressed
+            color="primary"
+            @click="applyFilters"
+            >Apply</v-btn
+          >
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-toolbar flat color="white" max-height="60px">
+      <v-btn depressed color="primary" @click="createPdf">Create PDF</v-btn>
+      <v-spacer></v-spacer>
+      <div class="ml-4 mt-2">
+        <v-toolbar-title>{{
+          filterApplied ? "Filtered view" : "Month view"
+        }}</v-toolbar-title>
+      </div>
+      <v-spacer></v-spacer>
+      <v-btn
+        v-if="!filterApplied"
+        depressed
+        color="primary"
+        @click="filterDialog = true"
+        >Add Filters</v-btn
+      >
+      <v-btn
+        v-if="filterApplied"
+        depressed
+        color="primary"
+        @click="removeFilters"
+        >Remove Filters</v-btn
+      >
+    </v-toolbar>
+
     <v-data-table
-      id="ta2"
+      id="monthTableView"
       :headers="headers"
       :items="entries"
       :items-per-page="entries.length"
       :item-class="highlightCurrentDateRow"
       hide-default-footer
     >
-      <template v-slot:top>
-        <v-toolbar flat color="white">
-          <v-btn depressed color="primary" @click="createPdf">Create PDF</v-btn>
-        </v-toolbar>
-      </template>
-
       <template v-slot:item.date="{ item }">
         {{ new Date(item.date).toDateString() }}
       </template>
@@ -135,18 +206,22 @@
       </template>
     </v-data-table>
 
-    <v-container no-gutters>
+    <v-container v-if="!filterApplied" no-gutters>
       <v-row>
         <v-col>
-        <v-btn class="mr-2" depressed color="primary" @click="viewPreviousMonth"
-          >Previous Month</v-btn
-        >
-        <v-btn depressed color="primary" @click="viewNextMonth"
-          >Next Month</v-btn
-        >
+          <v-btn
+            class="mr-2"
+            depressed
+            color="primary"
+            @click="viewPreviousMonth"
+            >Previous Month</v-btn
+          >
+          <v-btn depressed color="primary" @click="viewNextMonth"
+            >Next Month</v-btn
+          >
         </v-col>
-        </v-row>
-      </v-container>
+      </v-row>
+    </v-container>
   </v-app>
 </template>
 
@@ -162,7 +237,18 @@ import "jspdf-autotable";
 export default {
   name: "TimesheetTable",
 
+  computed: {
+    dateRangeText() {
+      return this.dates.join(" to ");
+    },
+  },
+
   data: () => ({
+    dates: [],
+    filterApplied: false,
+    filterDialog: false,
+    customerFilter: "",
+    projectFilter: "",
     currentMonth: new Date().getMonth(),
     currentYear: new Date().getFullYear(),
     workTime: [
@@ -272,7 +358,12 @@ export default {
       { text: "Total", value: "total", sortable: false },
       { text: "Customer", value: "customer" },
       { text: "Project", value: "project" },
-      { text: "Work Details", value: "workDetails", sortable: false },
+      {
+        text: "Work Details",
+        value: "workDetails",
+        sortable: false,
+        width: "25%",
+      },
       { text: "Actions", value: "actions", sortable: false, align: "center" },
     ],
     editedItem: {
@@ -314,6 +405,62 @@ export default {
   },
 
   methods: {
+    sendGetEntriesRequest(url) {
+      axios
+        .get(url)
+        .then((response) => {
+          this.entries = response.data;
+        })
+        .catch((error) => console.log(error));
+    },
+    applyFilters() {
+      if (this.projectFilter.length > 0 && this.customerFilter.length > 0) {
+        this.sendGetEntriesRequest(
+          "http://localhost:8085/api/timeentries/rangeProjectCustomerEntries/" +
+            this.dates[0] +
+            "/" +
+            this.dates[1] +
+            "/" +
+            this.projectFilter +
+            "/" +
+            this.customerFilter
+        );
+      } else if (this.projectFilter.length > 0) {
+        this.sendGetEntriesRequest(
+          "http://localhost:8085/api/timeentries/rangeProjectEntries/" +
+            this.dates[0] +
+            "/" +
+            this.dates[1] +
+            "/" +
+            this.projectFilter
+        );
+      } else if (this.customerFilter.length > 0) {
+        this.sendGetEntriesRequest(
+          "http://localhost:8085/api/timeentries/rangeCustomerEntries/" +
+            this.dates[0] +
+            "/" +
+            this.dates[1] +
+            "/" +
+            this.customerFilter
+        );
+      } else {
+        this.sendGetEntriesRequest(
+          "http://localhost:8085/api/timeentries/rangeEntries/" +
+            this.dates[0] +
+            "/" +
+            this.dates[1]
+        );
+      }
+      this.filterApplied = true;
+      this.filterDialog = false;
+    },
+    removeFilters() {
+      this.filterApplied = false;
+      this.projectFilter = "";
+      this.customerFilter = "";
+      this.dates = [];
+      this.updateEntries();
+    },
     viewNextMonth() {
       if (this.currentMonth == 11) {
         this.currentMonth = 0;
@@ -333,7 +480,9 @@ export default {
       this.updateEntries();
     },
     highlightCurrentDateRow: function (item) {
-      return new Date(item.date).getDate() === new Date().getDate() && new Date(item.date).getMonth() === new Date().getMonth() && new Date(item.date).getFullYear() === new Date().getFullYear()
+      return new Date(item.date).getDate() === new Date().getDate() &&
+        new Date(item.date).getMonth() === new Date().getMonth() &&
+        new Date(item.date).getFullYear() === new Date().getFullYear()
         ? "lightblue-color"
         : "white-color";
     },
@@ -366,7 +515,7 @@ export default {
         endTimeMinutes - breakTimeMinutes - startTimeMinutes;
       var totalTimeHours = Math.floor(totalTimeMinutes / 60);
       if (totalTimeHours < 0) {
-        this.editedItem.total = "--:--";
+        this.editedItem.total = "00:00";
         return;
       }
       totalTimeMinutes = totalTimeMinutes % 60;
@@ -468,12 +617,12 @@ export default {
     },
 
     updateEntries() {
-      axios
-        .get("http://localhost:8085/api/timeentries/monthEntries/"+ this.currentMonth + "/" + this.currentYear)
-        .then((response) => {
-          this.entries = response.data;
-        })
-        .catch((error) => console.log(error));
+      this.sendGetEntriesRequest(
+        "http://localhost:8085/api/timeentries/monthEntries/" +
+          this.currentMonth +
+          "/" +
+          this.currentYear
+      );
     },
 
     clearSelectedItem() {
@@ -489,8 +638,23 @@ export default {
       this.clearDialog = false;
     },
 
+    resetEditedItem() {
+      this.editedItem.date = "";
+      this.editedItem.startTime = "";
+      this.editedItem.break = "";
+      this.editedItem.endTime = "";
+      this.editedItem.total = "";
+      this.editedItem.customer = "";
+      this.editedItem.project = "";
+      this.editedItem.workDetails = "";
+      this.editedItem.createdAt = "";
+      this.editedItem.updatedAt = "";
+      this.editedItem.id = "";
+    },
+
     close() {
       this.dialog = false;
+      this.resetEditedItem();
     },
 
     closeClearDialog() {
